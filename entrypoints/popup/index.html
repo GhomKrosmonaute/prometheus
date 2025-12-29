@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Prometheus - Paramètres</title>
+    <meta name="manifest.type" content="browser_action" />
+  </head>
+  <body>
+    <div id="app">
+      <div class="header">
+        <h1>⚡ Prometheus</h1>
+        <p class="subtitle">Prévisualisation intelligente</p>
+      </div>
+      
+      <div class="section">
+        <label for="maxPreload">
+          <span class="label-text">Nombre max de liens à précharger</span>
+          <input type="number" id="maxPreload" min="1" max="10" />
+        </label>
+      </div>
+      
+      <div class="section">
+        <h3>Domaines désactivés</h3>
+        <p class="help-text">L'extension ne s'activera pas sur ces sites</p>
+        <div id="disabledDomains" class="list-container"></div>
+        <div class="add-item">
+          <input type="text" id="newDomain" placeholder="exemple.com" />
+          <button id="addDomain">Ajouter</button>
+        </div>
+      </div>
+      
+      <div class="section">
+        <h3>Liens blacklistés</h3>
+        <p class="help-text">Ces liens ne seront jamais préchargés</p>
+        <div id="blacklist" class="list-container"></div>
+        <div class="add-item">
+          <input type="text" id="newBlacklist" placeholder="https://exemple.com/page" />
+          <button id="addBlacklist">Ajouter</button>
+        </div>
+      </div>
+      
+      <div class="section actions">
+        <button id="save" class="btn-primary">Enregistrer</button>
+        <button id="reset" class="btn-secondary">Réinitialiser</button>
+      </div>
+      
+      <div id="status" class="status"></div>
+    </div>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>
