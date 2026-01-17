@@ -5,9 +5,11 @@ import {
   isValidPageUrl, 
   isBlacklisted,
   getFaviconUrl,
-  getLinkTitle 
+  getLinkTitle,
+  isSkipLink,
+  isSamePageLink
 } from './url-utils';
-import { getAllVisitCounts } from './storage';
+import { getAllVisitCounts, getAllScreenshots } from './storage';
 
 /**
  * Vérifie si un élément est visible et clicable
@@ -31,8 +33,11 @@ export async function extractEligibleLinks(
   blacklist: string[],
   maxCount: number = 5
 ): Promise<EligibleLink[]> {
-  // Récupérer tous les compteurs de visites
-  const visitCounts = await getAllVisitCounts();
+  // Récupérer tous les compteurs de visites et screenshots
+  const [visitCounts, screenshots] = await Promise.all([
+    getAllVisitCounts(),
+    getAllScreenshots(),
+  ]);
   
   // Extraire tous les liens <a> de la page
   const anchors = Array.from(document.querySelectorAll('a[href]')) as HTMLAnchorElement[];
@@ -45,8 +50,14 @@ export async function extractEligibleLinks(
       // Vérifier la visibilité
       if (!isElementVisible(anchor)) continue;
       
+      // Filtrer les liens d'accessibilité (skip links)
+      if (isSkipLink(anchor)) continue;
+      
       // Convertir en URL absolue
       const absoluteUrl = toAbsoluteUrl(anchor.href);
+      
+      // Filtrer les liens vers la même page
+      if (isSamePageLink(absoluteUrl)) continue;
       
       // Vérifier que c'est une page valide
       if (!isValidPageUrl(absoluteUrl)) continue;
@@ -65,6 +76,9 @@ export async function extractEligibleLinks(
       const visitCount = visitCounts[normalizedUrl];
       if (!visitCount || visitCount.count === 0) continue;
       
+      // Récupérer le screenshot s'il existe
+      const screenshotData = screenshots[normalizedUrl];
+      
       // Ajouter à la liste des liens éligibles
       eligibleLinks.push({
         url: normalizedUrl,
@@ -73,6 +87,7 @@ export async function extractEligibleLinks(
         lastVisitedAt: visitCount.lastVisitedAt,
         title: getLinkTitle(anchor),
         favicon: getFaviconUrl(normalizedUrl),
+        screenshot: screenshotData?.dataUrl,
       });
     } catch (error) {
       console.error('[Prometheus] Error processing link:', error);

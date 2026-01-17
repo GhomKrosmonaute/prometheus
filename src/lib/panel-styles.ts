@@ -7,74 +7,165 @@ export const PANEL_STYLES = `
   position: fixed;
   top: 0;
   right: 0;
-  width: 280px;
+  width: 300px;
   height: 100vh;
   z-index: 2147483647;
   pointer-events: auto;
-  box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
+  box-shadow: -4px 0 20px rgba(0, 0, 0, 0.15);
   overflow-y: auto;
   overflow-x: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 /* Panneau */
 #prometheus-preview-panel {
   width: 100%;
-  height: 100%;
+  min-height: 100%;
   display: flex;
   flex-direction: column;
   padding: 12px;
   box-sizing: border-box;
 }
 
-/* Section des miniatures */
-.prometheus-thumbnails {
+/* Section des cartes */
+.prometheus-cards {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
 }
 
-/* Miniature individuelle */
-.prometheus-thumbnail {
+/* ============================================
+   CARTE INDIVIDUELLE
+   ============================================ */
+.prometheus-card {
   position: relative;
   display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px;
-  background: rgba(255, 255, 255, 0.9);
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  border-radius: 8px;
+  flex-direction: column;
+  border-radius: 12px;
+  overflow: hidden;
   cursor: pointer;
-  transition: all 0.2s ease;
-  min-height: 50px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  background: #fff;
 }
 
-.prometheus-thumbnail:hover {
-  background: rgba(255, 255, 255, 1);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  transform: translateX(-2px);
+.prometheus-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
 }
 
-.prometheus-thumbnail-hidden {
-  opacity: 0.3;
+/* ============================================
+   CONTENEUR MEDIA (Screenshot/Gradient + Iframe)
+   ============================================ */
+.prometheus-media {
+  position: relative;
+  width: 100%;
+  height: 140px;
+  background-size: cover;
+  background-position: center top;
+  background-repeat: no-repeat;
+  overflow: hidden;
+}
+
+.prometheus-media-screenshot {
+  /* Le screenshot est défini via style inline */
+}
+
+.prometheus-media-gradient {
+  /* Le gradient est défini via style inline */
+}
+
+/* Overlay gradient pour lisibilité du texte */
+.prometheus-media-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.4) 0%,
+    rgba(0, 0, 0, 0) 40%,
+    rgba(0, 0, 0, 0) 60%,
+    rgba(0, 0, 0, 0.5) 100%
+  );
   pointer-events: none;
+  z-index: 1;
+}
+
+/* Wrapper iframe dans le media */
+.prometheus-iframe-wrapper {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 2;
+  background: #fff;
+}
+
+.prometheus-card-hovered .prometheus-iframe-wrapper {
+  opacity: 1;
+}
+
+/* Iframe */
+.prometheus-iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  display: block;
+  transform: scale(0.5);
+  transform-origin: top left;
+  width: 200%;
+  height: 200%;
+}
+
+/* Overlay clicable sur l'iframe */
+.prometheus-iframe-click-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  cursor: pointer;
+  z-index: 3;
+}
+
+/* ============================================
+   HEADER (Favicon + Titre + Bouton X)
+   ============================================ */
+.prometheus-card-header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  z-index: 10;
 }
 
 /* Favicon */
 .prometheus-favicon-wrapper {
   flex-shrink: 0;
-  width: 32px;
-  height: 32px;
+  width: 24px;
+  height: 24px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.05);
+  background: rgba(255, 255, 255, 0.9);
   border-radius: 6px;
   overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 .prometheus-favicon {
-  width: 20px;
-  height: 20px;
+  width: 16px;
+  height: 16px;
   object-fit: contain;
 }
 
@@ -84,156 +175,81 @@ export const PANEL_STYLES = `
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
-  font-weight: 600;
-  color: rgba(0, 0, 0, 0.6);
+  font-size: 12px;
+  font-weight: 700;
+  color: #333;
+  background: #f0f0f0;
 }
 
 /* Titre */
 .prometheus-title {
   flex: 1;
   font-size: 13px;
+  font-weight: 600;
   line-height: 1.3;
-  color: #333;
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
   overflow: hidden;
   text-overflow: ellipsis;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  word-break: break-word;
-}
-
-/* Badge de compteur */
-.prometheus-visit-badge {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  background: rgba(59, 130, 246, 0.9);
-  color: white;
-  font-size: 10px;
-  font-weight: 600;
-  padding: 2px 6px;
-  border-radius: 10px;
-  min-width: 18px;
-  text-align: center;
+  white-space: nowrap;
 }
 
 /* Bouton blacklist */
 .prometheus-blacklist-btn {
-  position: absolute;
-  bottom: 6px;
-  right: 6px;
-  width: 20px;
-  height: 20px;
-  background: rgba(239, 68, 68, 0.9);
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  background: rgba(0, 0, 0, 0.4);
   color: white;
   border: none;
   border-radius: 50%;
-  font-size: 16px;
+  font-size: 14px;
   line-height: 1;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   opacity: 0;
-  transition: opacity 0.2s ease;
+  transition: opacity 0.2s ease, background 0.2s ease;
   padding: 0;
 }
 
-.prometheus-thumbnail:hover .prometheus-blacklist-btn {
+.prometheus-card:hover .prometheus-blacklist-btn {
   opacity: 1;
 }
 
 .prometheus-blacklist-btn:hover {
-  background: rgba(220, 38, 38, 1);
-  transform: scale(1.1);
+  background: rgba(239, 68, 68, 0.9);
 }
 
-/* Section des iframes */
-.prometheus-iframes {
-  position: relative;
-  flex: 1;
-  margin-top: 12px;
-}
-
-/* Conteneur iframe */
-.prometheus-iframe-container {
+/* ============================================
+   FOOTER (Badge de visites)
+   ============================================ */
+.prometheus-card-footer {
   position: absolute;
-  top: 0;
+  bottom: 0;
   left: 0;
-  width: 100%;
-  height: 100%;
-  background: white;
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
-}
-
-/* Iframe */
-.prometheus-iframe {
-  width: 100%;
-  height: 100%;
-  border: none;
-  display: block;
-}
-
-/* Overlay clicable sur l'iframe */
-.prometheus-iframe-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: transparent;
-  cursor: pointer;
-  z-index: 1;
-}
-
-.prometheus-iframe-overlay:hover {
-  background: rgba(59, 130, 246, 0.05);
-}
-
-/* Fallback quand iframe bloqué */
-.prometheus-iframe-fallback {
-  width: 100%;
-  height: 100%;
+  right: 0;
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  padding: 20px;
-  text-align: center;
-  background: rgba(0, 0, 0, 0.02);
+  justify-content: flex-end;
+  padding: 10px 12px;
+  z-index: 10;
 }
 
-.prometheus-fallback-icon {
-  font-size: 48px;
-  opacity: 0.5;
+/* Badge de compteur */
+.prometheus-visit-badge {
+  background: rgba(255, 255, 255, 0.95);
+  color: #1a1a1a;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 12px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
 }
 
-.prometheus-fallback-text {
-  font-size: 14px;
-  color: #666;
-}
-
-.prometheus-fallback-btn {
-  padding: 8px 16px;
-  background: #3b82f6;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background 0.2s ease;
-}
-
-.prometheus-fallback-btn:hover {
-  background: #2563eb;
-}
-
-/* Animation de transition */
+/* ============================================
+   ANIMATION DE TRANSITION
+   ============================================ */
 @keyframes prometheus-transition-out {
   0% {
     transform: scale(1) translateX(0);
@@ -249,7 +265,9 @@ export const PANEL_STYLES = `
   animation: prometheus-transition-out 0.4s ease-out forwards;
 }
 
-/* Scrollbar personnalisée */
+/* ============================================
+   SCROLLBAR
+   ============================================ */
 #prometheus-container::-webkit-scrollbar {
   width: 6px;
 }
@@ -265,6 +283,35 @@ export const PANEL_STYLES = `
 
 #prometheus-container::-webkit-scrollbar-thumb:hover {
   background: rgba(0, 0, 0, 0.3);
+}
+
+/* ============================================
+   INDICATEUR DE CHARGEMENT
+   ============================================ */
+.prometheus-iframe-wrapper::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 24px;
+  height: 24px;
+  margin: -12px 0 0 -12px;
+  border: 3px solid rgba(0, 0, 0, 0.1);
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: prometheus-spin 0.8s linear infinite;
+  z-index: 1;
+}
+
+.prometheus-iframe-wrapper .prometheus-iframe {
+  position: relative;
+  z-index: 2;
+}
+
+@keyframes prometheus-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 `;
 

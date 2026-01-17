@@ -134,3 +134,61 @@ export function getLinkTitle(anchor: HTMLAnchorElement): string {
   return anchor.title || anchor.textContent?.trim() || anchor.href;
 }
 
+/**
+ * Vérifie si un lien est un lien d'accessibilité "skip to content"
+ */
+export function isSkipLink(anchor: HTMLAnchorElement): boolean {
+  // Vérifier si le href est juste une ancre sur la même page
+  const href = anchor.getAttribute('href') || '';
+  if (href.startsWith('#')) {
+    return true;
+  }
+  
+  // Vérifier le texte du lien pour les patterns communs de skip links
+  const text = (anchor.textContent || '').toLowerCase().trim();
+  const skipPatterns = [
+    'aller au contenu',
+    'skip to content',
+    'skip to main',
+    'skip navigation',
+    'passer au contenu',
+    'passer la navigation',
+    'aller au menu',
+    'go to content',
+    'go to main',
+    'jump to content',
+    'jump to main',
+  ];
+  
+  for (const pattern of skipPatterns) {
+    if (text.includes(pattern)) {
+      return true;
+    }
+  }
+  
+  // Vérifier les classes/id communs
+  const className = anchor.className.toLowerCase();
+  const id = anchor.id.toLowerCase();
+  const skipClassPatterns = ['skip', 'sr-only', 'screen-reader', 'visually-hidden'];
+  
+  for (const pattern of skipClassPatterns) {
+    if (className.includes(pattern) || id.includes(pattern)) {
+      return true;
+    }
+  }
+  
+  return false;
+}
+
+/**
+ * Vérifie si un lien pointe vers la même page (self-referential)
+ */
+export function isSamePageLink(url: string): boolean {
+  try {
+    const currentUrl = normalizeUrl(window.location.href);
+    const linkUrl = normalizeUrl(url);
+    return currentUrl === linkUrl;
+  } catch {
+    return false;
+  }
+}

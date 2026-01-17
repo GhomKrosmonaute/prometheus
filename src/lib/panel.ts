@@ -46,15 +46,67 @@ function getBodyBackground(): string {
 }
 
 /**
- * Crée l'élément de miniature pour un lien
+ * Génère un dégradé cohérent basé sur l'URL
  */
-function createThumbnailElement(link: EligibleLink, index: number): HTMLElement {
-  const thumbnail = document.createElement('div');
-  thumbnail.className = 'prometheus-thumbnail';
-  thumbnail.dataset.index = String(index);
-  thumbnail.dataset.url = link.url;
+function generateGradient(url: string): string {
+  // Utiliser un hash simple de l'URL pour générer des couleurs cohérentes
+  let hash = 0;
+  for (let i = 0; i < url.length; i++) {
+    const char = url.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash;
+  }
   
-  // Favicon
+  // Générer deux couleurs à partir du hash
+  const hue1 = Math.abs(hash % 360);
+  const hue2 = (hue1 + 40) % 360; // Couleur complémentaire proche
+  
+  return `linear-gradient(135deg, hsl(${hue1}, 65%, 45%) 0%, hsl(${hue2}, 70%, 35%) 100%)`;
+}
+
+/**
+ * Crée l'élément de carte pour un lien
+ * Structure:
+ * - Background: screenshot ou dégradé
+ * - Header: favicon + titre
+ * - Footer: badge de visites
+ * - Au hover: iframe remplace le background
+ */
+function createCardElement(link: EligibleLink, index: number): HTMLElement {
+  const card = document.createElement('div');
+  card.className = 'prometheus-card';
+  card.dataset.index = String(index);
+  card.dataset.url = link.url;
+  
+  // Conteneur media (screenshot/gradient + iframe au hover)
+  const mediaContainer = document.createElement('div');
+  mediaContainer.className = 'prometheus-media';
+  
+  // Background: screenshot ou dégradé
+  if (link.screenshot) {
+    mediaContainer.style.backgroundImage = `url(${link.screenshot})`;
+    mediaContainer.classList.add('prometheus-media-screenshot');
+  } else {
+    mediaContainer.style.background = generateGradient(link.url);
+    mediaContainer.classList.add('prometheus-media-gradient');
+  }
+  
+  // Overlay gradient pour lisibilité du texte
+  const overlay = document.createElement('div');
+  overlay.className = 'prometheus-media-overlay';
+  mediaContainer.appendChild(overlay);
+  
+  // Conteneur iframe (caché par défaut, affiché au hover)
+  const iframeContainer = document.createElement('div');
+  iframeContainer.className = 'prometheus-iframe-wrapper';
+  mediaContainer.appendChild(iframeContainer);
+  
+  card.appendChild(mediaContainer);
+  
+  // Header: favicon + titre
+  const header = document.createElement('div');
+  header.className = 'prometheus-card-header';
+  
   const faviconWrapper = document.createElement('div');
   faviconWrapper.className = 'prometheus-favicon-wrapper';
   
@@ -63,26 +115,17 @@ function createThumbnailElement(link: EligibleLink, index: number): HTMLElement 
   favicon.src = link.favicon || '';
   favicon.alt = '';
   favicon.onerror = () => {
-    // Fallback: afficher la première lettre du titre
     faviconWrapper.innerHTML = `<div class="prometheus-favicon-fallback">${link.title.charAt(0).toUpperCase()}</div>`;
   };
   
   faviconWrapper.appendChild(favicon);
-  thumbnail.appendChild(faviconWrapper);
+  header.appendChild(faviconWrapper);
   
-  // Titre
   const title = document.createElement('div');
   title.className = 'prometheus-title';
   title.textContent = link.title;
   title.title = link.title;
-  thumbnail.appendChild(title);
-  
-  // Badge de compteur de visites
-  const badge = document.createElement('div');
-  badge.className = 'prometheus-visit-badge';
-  badge.textContent = String(link.visitCount);
-  badge.title = `${link.visitCount} visite${link.visitCount > 1 ? 's' : ''}`;
-  thumbnail.appendChild(badge);
+  header.appendChild(title);
   
   // Bouton blacklist (croix)
   const blacklistBtn = document.createElement('button');
@@ -91,105 +134,90 @@ function createThumbnailElement(link: EligibleLink, index: number): HTMLElement 
   blacklistBtn.title = 'Ne plus précharger ce lien';
   blacklistBtn.onclick = async (e) => {
     e.stopPropagation();
+    e.preventDefault();
     await handleBlacklist(link.url);
   };
-  thumbnail.appendChild(blacklistBtn);
+  header.appendChild(blacklistBtn);
+  
+  card.appendChild(header);
+  
+  // Footer: badge de visites
+  const footer = document.createElement('div');
+  footer.className = 'prometheus-card-footer';
+  
+  const badge = document.createElement('div');
+  badge.className = 'prometheus-visit-badge';
+  badge.textContent = String(link.visitCount);
+  badge.title = `${link.visitCount} visite${link.visitCount > 1 ? 's' : ''}`;
+  footer.appendChild(badge);
+  
+  card.appendChild(footer);
   
   // Événements hover
-  thumbnail.addEventListener('mouseenter', () => {
+  let iframeLoaded = false;
+  
+  card.addEventListener('mouseenter', () => {
     panelState.hoveredIndex = index;
+    
+    // Charger l'iframe seulement au premier hover
+    if (!iframeLoaded) {
+      loadIframeInCard(iframeContainer, link);
+      iframeLoaded = true;
+    }
+    
+    // Afficher l'iframe
+    card.classList.add('prometheus-card-hovered');
+    
     if (callbacks.onLinkHovered) {
       callbacks.onLinkHovered(link.url, index);
     }
   });
   
-  thumbnail.addEventListener('mouseleave', () => {
+  card.addEventListener('mouseleave', () => {
     if (panelState.hoveredIndex === index) {
       panelState.hoveredIndex = null;
+      
+      // Cacher l'iframe
+      card.classList.remove('prometheus-card-hovered');
+      
       if (callbacks.onLinkUnhovered) {
         callbacks.onLinkUnhovered();
       }
     }
   });
   
-  return thumbnail;
+  // Clic pour naviguer
+  card.addEventListener('click', (e) => {
+    // Ne pas naviguer si on clique sur le bouton blacklist
+    if ((e.target as HTMLElement).closest('.prometheus-blacklist-btn')) {
+      return;
+    }
+    
+    if (callbacks.onLinkClicked) {
+      callbacks.onLinkClicked(link.url);
+    }
+  });
+  
+  return card;
 }
 
 /**
- * Crée le conteneur iframe pour un lien
+ * Charge l'iframe dans le conteneur de la carte
  */
-function createIframeElement(link: EligibleLink, index: number): HTMLElement {
-  const container = document.createElement('div');
-  container.className = 'prometheus-iframe-container';
-  container.dataset.index = String(index);
-  container.dataset.url = link.url;
-  container.style.display = 'none';
-  
+function loadIframeInCard(container: HTMLElement, link: EligibleLink): void {
   const iframe = document.createElement('iframe');
   iframe.className = 'prometheus-iframe';
   iframe.src = link.url;
   iframe.sandbox.add('allow-same-origin', 'allow-scripts', 'allow-popups', 'allow-forms');
   
-  // Gestion des erreurs de chargement
-  iframe.onerror = () => {
-    showIframeFallback(container, link);
-  };
-  
-  // Intercepter les clics dans l'iframe
-  iframe.addEventListener('load', () => {
-    try {
-      // Note: ne fonctionnera que si same-origin
-      const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
-      if (iframeDoc) {
-        iframeDoc.addEventListener('click', (e) => {
-          e.preventDefault();
-          if (callbacks.onLinkClicked) {
-            callbacks.onLinkClicked(link.url);
-          }
-        });
-      }
-    } catch {
-      // Cross-origin, on ne peut pas intercepter
-      // L'utilisateur devra cliquer sur l'overlay
-    }
-  });
+  // Overlay clicable pour la navigation
+  const clickOverlay = document.createElement('div');
+  clickOverlay.className = 'prometheus-iframe-click-overlay';
   
   container.appendChild(iframe);
-  
-  // Overlay clicable pour la navigation
-  const overlay = document.createElement('div');
-  overlay.className = 'prometheus-iframe-overlay';
-  overlay.onclick = () => {
-    if (callbacks.onLinkClicked) {
-      callbacks.onLinkClicked(link.url);
-    }
-  };
-  container.appendChild(overlay);
-  
-  return container;
+  container.appendChild(clickOverlay);
 }
 
-/**
- * Affiche un fallback quand l'iframe ne peut pas charger
- */
-function showIframeFallback(container: HTMLElement, link: EligibleLink): void {
-  container.innerHTML = `
-    <div class="prometheus-iframe-fallback">
-      <div class="prometheus-fallback-icon">🔒</div>
-      <div class="prometheus-fallback-text">Aperçu indisponible</div>
-      <button class="prometheus-fallback-btn">Ouvrir le lien</button>
-    </div>
-  `;
-  
-  const btn = container.querySelector('.prometheus-fallback-btn') as HTMLButtonElement;
-  if (btn) {
-    btn.onclick = () => {
-      if (callbacks.onLinkClicked) {
-        callbacks.onLinkClicked(link.url);
-      }
-    };
-  }
-}
 
 /**
  * Gère l'ajout d'un lien à la blacklist
@@ -250,27 +278,16 @@ function renderPanel(links: EligibleLink[]): void {
   const panel = document.createElement('div');
   panel.id = PANEL_ID;
   
-  // Section des miniatures
-  const thumbnailsSection = document.createElement('div');
-  thumbnailsSection.className = 'prometheus-thumbnails';
+  // Section des cartes
+  const cardsSection = document.createElement('div');
+  cardsSection.className = 'prometheus-cards';
   
   links.forEach((link, index) => {
-    const thumbnail = createThumbnailElement(link, index);
-    thumbnailsSection.appendChild(thumbnail);
+    const card = createCardElement(link, index);
+    cardsSection.appendChild(card);
   });
   
-  panel.appendChild(thumbnailsSection);
-  
-  // Section des iframes
-  const iframesSection = document.createElement('div');
-  iframesSection.className = 'prometheus-iframes';
-  
-  links.forEach((link, index) => {
-    const iframeContainer = createIframeElement(link, index);
-    iframesSection.appendChild(iframeContainer);
-  });
-  
-  panel.appendChild(iframesSection);
+  panel.appendChild(cardsSection);
   
   // Remplacer le contenu
   container.innerHTML = '';
@@ -279,38 +296,25 @@ function renderPanel(links: EligibleLink[]): void {
 
 /**
  * Affiche l'iframe pour un index donné
+ * Note: Avec la nouvelle architecture, l'iframe est gérée par le hover CSS
  */
 export function showIframe(index: number): void {
-  const iframes = document.querySelectorAll('.prometheus-iframe-container');
-  const thumbnails = document.querySelectorAll('.prometheus-thumbnail');
-  
-  iframes.forEach((iframe, i) => {
-    const el = iframe as HTMLElement;
-    el.style.display = i === index ? 'block' : 'none';
-  });
-  
-  thumbnails.forEach((thumb, i) => {
+  const cards = document.querySelectorAll('.prometheus-card');
+  cards.forEach((card, i) => {
     if (i === index) {
-      thumb.classList.add('prometheus-thumbnail-hidden');
-    } else {
-      thumb.classList.remove('prometheus-thumbnail-hidden');
+      card.classList.add('prometheus-card-hovered');
     }
   });
 }
 
 /**
- * Cache tous les iframes et réaffiche les miniatures
+ * Cache tous les iframes
+ * Note: Avec la nouvelle architecture, l'iframe est gérée par le hover CSS
  */
 export function hideIframes(): void {
-  const iframes = document.querySelectorAll('.prometheus-iframe-container');
-  const thumbnails = document.querySelectorAll('.prometheus-thumbnail');
-  
-  iframes.forEach((iframe) => {
-    (iframe as HTMLElement).style.display = 'none';
-  });
-  
-  thumbnails.forEach((thumb) => {
-    thumb.classList.remove('prometheus-thumbnail-hidden');
+  const cards = document.querySelectorAll('.prometheus-card');
+  cards.forEach((card) => {
+    card.classList.remove('prometheus-card-hovered');
   });
 }
 

@@ -1,9 +1,9 @@
-/**
+﻿/**
  * Types et interfaces pour Prometheus
  */
 
 /**
- * Paramètres de l'extension (storage sync)
+ * Parametres de l'extension (storage sync)
  */
 export interface PrometheusSettings {
   maxPreloadPerPage: number;
@@ -20,14 +20,29 @@ export interface VisitCount {
 }
 
 /**
- * Structure de données pour les visites (storage local)
+ * Structure de donnees pour les visites (storage local)
  */
 export interface VisitData {
   visitCountsByUrl: Record<string, VisitCount>;
 }
 
 /**
- * Lien éligible pour prévisualisation
+ * Donnees de screenshot pour une URL
+ */
+export interface ScreenshotData {
+  dataUrl: string;
+  capturedAt: number;
+}
+
+/**
+ * Structure de donnees pour les screenshots (storage local)
+ */
+export interface ScreenshotsData {
+  screenshotsByUrl: Record<string, ScreenshotData>;
+}
+
+/**
+ * Lien eligible pour previsualisation
  */
 export interface EligibleLink {
   url: string;
@@ -36,10 +51,11 @@ export interface EligibleLink {
   lastVisitedAt: number;
   title: string;
   favicon?: string;
+  screenshot?: string; // base64 data URL du screenshot
 }
 
 /**
- * État du panneau de prévisualisation
+ * Etat du panneau de previsualisation
  */
 export interface PanelState {
   isVisible: boolean;
@@ -48,3 +64,16 @@ export interface PanelState {
   preloadedUrls: Set<string>;
 }
 
+/**
+ * Messages entre content script et background script
+ */
+export interface CaptureScreenshotMessage {
+  type: 'capture-screenshot';
+  url: string;
+}
+
+export interface CaptureScreenshotResponse {
+  success: boolean;
+  dataUrl?: string;
+  error?: string;
+}

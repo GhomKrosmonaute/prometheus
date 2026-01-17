@@ -1,5 +1,5 @@
 import { storage } from 'wxt/utils/storage';
-import type { PrometheusSettings, VisitData, VisitCount } from './types';
+import type { PrometheusSettings, VisitData, VisitCount, ScreenshotsData, ScreenshotData } from './types';
 import { DEFAULT_DISABLED_DOMAINS, DEFAULT_MAX_PRELOAD } from './constants';
 
 /**
@@ -8,6 +8,7 @@ import { DEFAULT_DISABLED_DOMAINS, DEFAULT_MAX_PRELOAD } from './constants';
 const STORAGE_KEYS = {
   SETTINGS: 'local:settings',
   VISITS: 'local:visits',
+  SCREENSHOTS: 'local:screenshots',
 } as const;
 
 /**
@@ -151,3 +152,76 @@ export async function cleanOldVisits(maxAgeMs: number = 90 * 24 * 60 * 60 * 1000
   await storage.setItem(STORAGE_KEYS.VISITS, visits);
 }
 
+// ============================================================================
+// SCREENSHOTS
+// ============================================================================
+
+/**
+ * Données de screenshots par défaut
+ */
+const DEFAULT_SCREENSHOTS: ScreenshotsData = {
+  screenshotsByUrl: {},
+};
+
+/**
+ * Charge les données de screenshots depuis le storage
+ */
+async function loadScreenshots(): Promise<ScreenshotsData> {
+  const stored = await storage.getItem<ScreenshotsData>(STORAGE_KEYS.SCREENSHOTS);
+  
+  if (!stored) {
+    return DEFAULT_SCREENSHOTS;
+  }
+  
+  return stored;
+}
+
+/**
+ * Sauvegarde un screenshot pour une URL
+ */
+export async function saveScreenshot(url: string, dataUrl: string): Promise<void> {
+  const screenshots = await loadScreenshots();
+  
+  screenshots.screenshotsByUrl[url] = {
+    dataUrl,
+    capturedAt: Date.now(),
+  };
+  
+  await storage.setItem(STORAGE_KEYS.SCREENSHOTS, screenshots);
+}
+
+/**
+ * Récupère le screenshot pour une URL
+ */
+export async function getScreenshot(url: string): Promise<ScreenshotData | null> {
+  const screenshots = await loadScreenshots();
+  return screenshots.screenshotsByUrl[url] || null;
+}
+
+/**
+ * Récupère tous les screenshots
+ */
+export async function getAllScreenshots(): Promise<Record<string, ScreenshotData>> {
+  const screenshots = await loadScreenshots();
+  return screenshots.screenshotsByUrl;
+}
+
+/**
+ * Nettoie les anciens screenshots (pour éviter que le storage grossisse trop)
+ */
+export async function cleanOldScreenshots(maxAgeMs: number = 30 * 24 * 60 * 60 * 1000): Promise<void> {
+  const screenshots = await loadScreenshots();
+  const now = Date.now();
+  const cutoff = now - maxAgeMs;
+  
+  const cleaned: Record<string, ScreenshotData> = {};
+  
+  for (const [url, screenshotData] of Object.entries(screenshots.screenshotsByUrl)) {
+    if (screenshotData.capturedAt >= cutoff) {
+      cleaned[url] = screenshotData;
+    }
+  }
+  
+  screenshots.screenshotsByUrl = cleaned;
+  await storage.setItem(STORAGE_KEYS.SCREENSHOTS, screenshots);
+}

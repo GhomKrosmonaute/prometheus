@@ -1,11 +1,12 @@
-import { loadSettings } from '@/src/lib/storage';
-import { isDomainDisabled } from '@/src/lib/url-utils';
+import { loadSettings, saveScreenshot } from '@/src/lib/storage';
+import { isDomainDisabled, normalizeUrl } from '@/src/lib/url-utils';
 import { initLinkTracking } from '@/src/lib/link-tracker';
 import { extractEligibleLinks, observeDOMChanges } from '@/src/lib/link-selector';
 import { createPanel, showIframe, hideIframes, hidePanel } from '@/src/lib/panel';
 import { preloadUrls } from '@/src/lib/preloader';
 import { navigateWithTransition } from '@/src/lib/navigation';
 import { DEFAULT_DISPLAY_COUNT } from '@/src/lib/constants';
+import type { CaptureScreenshotResponse } from '@/src/lib/types';
 
 export default defineContentScript({
   matches: ['<all_urls>'],
@@ -74,6 +75,38 @@ export default defineContentScript({
       document.addEventListener('DOMContentLoaded', analyzePage);
     } else {
       await analyzePage();
+    }
+    
+    // Capturer un screenshot après le chargement complet de la page
+    async function capturePageScreenshot() {
+      try {
+        const currentUrl = normalizeUrl(window.location.href);
+        
+        // Attendre un peu que la page se stabilise visuellement
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Envoyer un message au background script pour capturer
+        const response = await browser.runtime.sendMessage({
+          type: 'capture-screenshot',
+          url: currentUrl,
+        }) as CaptureScreenshotResponse;
+        
+        if (response.success && response.dataUrl) {
+          await saveScreenshot(currentUrl, response.dataUrl);
+          console.log('[Prometheus] Screenshot captured for:', currentUrl);
+        } else {
+          console.warn('[Prometheus] Screenshot capture failed:', response.error);
+        }
+      } catch (error) {
+        console.error('[Prometheus] Error capturing screenshot:', error);
+      }
+    }
+    
+    // Capturer le screenshot après le chargement complet
+    if (document.readyState === 'complete') {
+      capturePageScreenshot();
+    } else {
+      window.addEventListener('load', capturePageScreenshot);
     }
     
     // Observer les changements du DOM pour les SPAs
